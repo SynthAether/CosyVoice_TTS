@@ -218,6 +218,7 @@ python3 webui.py --port 50000 --model_dir pretrained_models/CosyVoice-300M
 
 For advanced users, we have provided training and inference scripts in `examples/libritts/cosyvoice/run.sh`.
 
+A small utility `tools/speech_token_to_wav.py` converts speech token files back to audio for analysis. Quality usually improves when the prompt matches the token speaker.
 #### Build for deployment
 
 Optionally, if you want service deployment,
