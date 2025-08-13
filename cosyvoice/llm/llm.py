@@ -1,5 +1,5 @@
 # Copyright (c) 2024 Alibaba Inc (authors: Xiang Lyu, Zhihao Du)
-#               2025 Alibaba Inc (authors: Xiang Lyu, Yabin Li, Qihua)
+#               2025 Alibaba Inc (authors: Xiang Lyu, Yabin Li, Qihua, Shengqiang Li)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -381,7 +381,7 @@ class Qwen2LM(TransformerLM):
             self,
             batch: dict,
             device: torch.device,
-        ) -> Dict[str, Optional[torch.Tensor]]:
+    ) -> Dict[str, Optional[torch.Tensor]]:
         text_token = batch['text_token'].to(device)
         text_token_len = batch['text_token_len'].to(device)
         speech_token = batch['speech_token'].to(device)
@@ -401,7 +401,8 @@ class Qwen2LM(TransformerLM):
         speech_token_combined_emb = self.speech_embedding(speech_token_combined)
 
         # 3. prepare llm_input/target
-        lm_target, lm_input, lm_input_len = self.prepare_lm_input_target(text_token.repeat(2, 1), text_token_emb.repeat(2, 1, 1), text_token_len.repeat(2), speech_token_combined, speech_token_combined_emb, speech_token_combined_len)
+        lm_target, lm_input, lm_input_len = self.prepare_lm_input_target(text_token.repeat(2, 1), text_token_emb.repeat(2, 1, 1), text_token_len.repeat(2),
+                                                                         speech_token_combined, speech_token_combined_emb, speech_token_combined_len)
         lm_target = lm_target.to(device)
 
         # 4. run lm forward
@@ -419,8 +420,8 @@ class Qwen2LM(TransformerLM):
         rejected_lm_mask = rejected_lm_target == IGNORE_ID
         chosen_logps = torch.gather(chosen_logits.log_softmax(dim=-1), dim=2, index=chosen_lm_target.masked_fill(chosen_lm_mask, 0).unsqueeze(dim=-1)).squeeze(dim=-1)
         rejected_logps = torch.gather(rejected_logits.log_softmax(dim=-1), dim=2, index=rejected_lm_target.masked_fill(rejected_lm_mask, 0).unsqueeze(dim=-1)).squeeze(dim=-1)
-        chosen_logps = (chosen_logps * chosen_lm_mask).mean(dim=-1)
-        rejected_logps = (rejected_logps * chosen_lm_mask).mean(dim=-1)
+        chosen_logps = (chosen_logps * chosen_lm_mask).sum(dim=-1) / chosen_lm_mask.sum(dim=-1)
+        rejected_logps = (rejected_logps * rejected_lm_mask).sum(dim=-1) / rejected_lm_mask.sum(dim=-1)
         return {'loss': loss, 'acc': acc, 'chosen_logps': chosen_logps, 'rejected_logps': rejected_logps}
 
     @torch.inference_mode()
